@@ -49,11 +49,12 @@ export default function ChatInterface({ isOpen, onClose }) {
     setIsLoading(true)
 
     try {
+      console.log('Sending request to OpenRouter API...')
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': 'Bearer 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',
-          'HTTP-Referer': 'https://brahmgpt.com',
+          'Authorization': 'Bearer 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',
+          'HTTP-Referer': window.location.href,
           'X-Title': 'BrahmGPT',
           'Content-Type': 'application/json',
         },
@@ -63,25 +64,38 @@ export default function ChatInterface({ isOpen, onClose }) {
         }),
       })
 
+      console.log('Response status:', response.status)
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()))
+
       if (!response.ok) {
-        throw new Error('Failed to get response from AI')
+        const errorText = await response.text()
+        console.error('Error response:', errorText)
+        throw new Error(`API request failed with status ${response.status}: ${errorText}`)
       }
 
       const data = await response.json()
+      console.log('Full API Response:', data)
       
-      if (!data.choices?.[0]?.message?.content) {
-        throw new Error('No response received from AI')
+      if (!data || !data.choices || !data.choices[0] || !data.choices[0].message) {
+        console.error('Invalid response structure:', data)
+        throw new Error('Invalid response structure from API')
+      }
+
+      const content = data.choices[0].message.content
+      if (!content) {
+        console.error('Empty content in response:', data)
+        throw new Error('Empty response content from API')
       }
 
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: data.choices[0].message.content 
+        content: content
       }])
     } catch (error) {
-      console.error('Error:', error)
+      console.error('Detailed error:', error)
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: `Error: ${error.message}` 
+        content: `Error: ${error.message}. Please check the console for more details.` 
       }])
     } finally {
       setIsLoading(false)
@@ -214,7 +228,7 @@ export default function ChatInterface({ isOpen, onClose }) {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input */}
+            {/* Chat Input */}
             <form onSubmit={handleSubmit} className="p-4 border-t border-gray-800">
               <div className="flex space-x-4">
                 <input
